@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buscador de Tesoros</title>
+    <style>
+        /* Estilos CSS básicos para la interfaz */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        h1, h2 {
+            color: #0056b3;
+        }
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        form label {
+            font-weight: bold;
+        }
+        form input[type="text"],
+        form textarea {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 1em;
+        }
+        form button {
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.2s ease-in-out;
+        }
+        form button:hover {
+            background-color: #0056b3;
+        }
+        #message {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border-color: #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border-color: #f5c6cb;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .actions button {
+            background-color: #ffc107; /* Amarillo para editar */
+            color: #333;
+            margin-right: 5px;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .actions button.delete-btn {
+            background-color: #dc3545; /* Rojo para eliminar */
+            color: white;
+        }
+        .actions button:hover {
+            opacity: 0.9;
+        }
+        .pagination {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        .pagination button {
+            padding: 8px 15px;
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out;
+        }
+        .pagination button:disabled {
+            background-color: #e9ecef;
+            cursor: not-allowed;
+        }
+        .pagination button:hover:not(:disabled) {
+            background-color: #5a6268;
+        }
+    </style>
+</head>
+<body>
+    <h1>Mi Buscador de Tesoros</h1>
+
+    <div class="container">
+        <h2>Añadir Nuevo Tesoro</h2>
+        <form id="addTesorosForm">
+            <label for="itemName">Nombre del Tesoro:</label>
+            <input type="text" id="itemName" name="name" required>
+
+            <label for="itemDescription">Descripción:</label>
+            <textarea id="itemDescription" name="description"></textarea>
+
+            <label for="itemTags">Etiquetas (separadas por comas, ej: oro,antiguo):</label>
+            <input type="text" id="itemTags" name="tags">
+
+            <button type="submit">Guardar Tesoro</button>
+            <div id="addMessage" class="message"></div>
+        </form>
+    </div>
+
+    <div class="container">
+        <h2>Buscar Tesoros</h2>
+        <form id="searchTesorosForm">
+            <label for="searchQuery">Buscar por nombre, descripción o etiquetas:</label>
+            <input type="text" id="searchQuery" name="q">
+
+            <label for="searchTag">Filtrar por etiqueta (ej: oro):</label>
+            <input type="text" id="searchTag" name="tag">
+
+            <button type="submit">Buscar Tesoros</button>
+            <button type="button" onclick="loadAllItems()">Ver Todos</button>
+        </form>
+    </div>
+
+    <div class="container">
+        <h2>Listado de Tesoros</h2>
+        <div id="tesorosList">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Descripción</th>
+                        <th>Etiquetas</th>
+                        <th>Creado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="itemsTableBody">
+                    </tbody>
+            </table>
+            <div class="pagination">
+                <button id="prevPage" disabled>Anterior</button>
+                <span>Página <span id="currentPageDisplay">1</span> de <span id="totalPagesDisplay">1</span></span>
+                <button id="nextPage">Siguiente</button>
+            </div>
+            <div id="listMessage" class="message"></div>
+        </div>
+    </div>
+
+    <div id="editModal" class="container" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 25px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2); z-index: 1000;">
+        <h2>Editar Tesoro</h2>
+        <form id="editTesorosForm">
+            <input type="hidden" id="editItemId">
+            <label for="editItemName">Nombre:</label>
+            <input type="text" id="editItemName" name="name" required>
+            <label for="editItemDescription">Descripción:</label>
+            <textarea id="editItemDescription" name="description"></textarea>
+            <label for="editItemTags">Etiquetas (separadas por comas):</label>
+            <input type="text" id="editItemTags" name="tags">
+            <button type="submit">Guardar Cambios</button>
+            <button type="button" onclick="closeEditModal()">Cancelar</button>
+            <div id="editMessage" class="message"></div>
+        </form>
+    </div>
+    <div id="modalOverlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999;"></div>
+
+
+    <script>
+        // URL base de tu API
+        const API_URL = 'http://localhost:3000/items';
+
+        // Elementos del DOM
+        const addTesorosForm = document.getElementById('addTesorosForm');
+        const addMessage = document.getElementById('addMessage');
+        const searchTesorosForm = document.getElementById('searchTesorosForm');
+        const itemsTableBody = document.getElementById('itemsTableBody');
+        const listMessage = document.getElementById('listMessage');
+        const prevPageBtn = document.getElementById('prevPage');
+        const nextPageBtn = document.getElementById('nextPage');
+        const currentPageDisplay = document.getElementById('currentPageDisplay');
+        const totalPagesDisplay = document.getElementById('totalPagesDisplay');
+
+        // Para el modal de edición
+        const editModal = document.getElementById('editModal');
+        const modalOverlay = document.getElementById('modalOverlay');
+        const editTesorosForm = document.getElementById('editTesorosForm');
+        const editItemId = document.getElementById('editItemId');
+        const editItemName = document.getElementById('editItemName');
+        const editItemDescription = document.getElementById('editItemDescription');
+        const editItemTags = document.getElementById('editItemTags');
+        const editMessage = document.getElementById('editMessage');
+
+        let currentPage = 1;
+        let currentLimit = 10;
+        let currentSearchQuery = '';
+        let currentSearchTag = '';
+        let isSearching = false; // Bandera para saber si estamos en modo búsqueda o viendo todos
+
+        // Función para mostrar mensajes en la interfaz
+        function displayMessage(element, message, type) {
+            element.textContent = message;
+            element.className = `message ${type}`; // Añade clases para estilo (success/error)
+            element.style.display = 'block';
+            setTimeout(() => {
+                element.style.display = 'none';
+                element.textContent = '';
+                element.className = 'message';
+            }, 3000); // El mensaje desaparece después de 3 segundos
+        }
+
+        // Función para cargar los tesoros
+        async function loadItems() {
+            let url = '';
+            if (isSearching) {
+                url = `${API_URL}/search?page=${currentPage}&limit=${currentLimit}`;
+                if (currentSearchQuery) url += `&q=${encodeURIComponent(currentSearchQuery)}`;
+                if (currentSearchTag) url += `&tag=${encodeURIComponent(currentSearchTag)}`;
+            } else {
+                url = `${API_URL}?page=${currentPage}&limit=${currentLimit}`;
+            }
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const result = await response.json();
+                
+                displayItems(result.data);
+                updatePagination(result.currentPage, result.totalPages, result.totalItems);
+
+            } catch (error) {
+                console.error('Error al cargar tesoros:', error);
+                displayMessage(listMessage, `Error al cargar tesoros: ${error.message}`, 'error');
+                itemsTableBody.innerHTML = '<tr><td colspan="6">No se pudieron cargar los tesoros.</td></tr>';
+            }
+        }
+
+        // Función para mostrar los tesoros en la tabla
+        function displayItems(items) {
+            itemsTableBody.innerHTML = ''; // Limpiar la tabla
+            if (items.length === 0) {
+                itemsTableBody.innerHTML = '<tr><td colspan="6">No hay tesoros que mostrar.</td></tr>';
+                return;
+            }
+
+            items.forEach(item => {
+                const row = itemsTableBody.insertRow();
+                row.insertCell().textContent = item._id;
+                row.insertCell().textContent = item.name;
+                row.insertCell().textContent = item.description || 'N/A';
+                row.insertCell().textContent = item.tags && item.tags.length > 0 ? item.tags.join(', ') : 'Ninguna';
+                row.insertCell().textContent = new Date(item.createdAt).toLocaleDateString(); // Formatear fecha
+
+                const actionsCell = row.insertCell();
+                actionsCell.classList.add('actions');
+                const editButton = document.createElement('button');
+                editButton.textContent = 'Editar';
+                editButton.onclick = () => openEditModal(item);
+                actionsCell.appendChild(editButton);
+
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Eliminar';
+                deleteButton.classList.add('delete-btn');
+                deleteButton.onclick = () => deleteItem(item._id);
+                actionsCell.appendChild(deleteButton);
+            });
+        }
+
+        // Función para actualizar la paginación
+        function updatePagination(current, total, totalItems) {
+            currentPage = current;
+            currentPageDisplay.textContent = current;
+            totalPagesDisplay.textContent = total;
+
+            prevPageBtn.disabled = current === 1;
+            nextPageBtn.disabled = current === total || totalItems === 0;
+
+            if (totalItems === 0) {
+                prevPageBtn.disabled = true;
+                nextPageBtn.disabled = true;
+            }
+        }
+
+        // --- Funcionalidad de Añadir Tesoro ---
+        addTesorosForm.addEventListener('submit', async (e) => {
+            e.preventDefault(); // Prevenir que el formulario se recargue
+
+            const name = document.getElementById('itemName').value;
+            const description = document.getElementById('itemDescription').value;
+            // Convertir tags de string separado por comas a array
+            const tagsInput = document.getElementById('itemTags').value;
+            const tags = tagsInput ? tagsInput.split(',').map(tag => tag.trim()).filter(tag => tag !== '') : [];
+
+            const newItem = { name, description, tags };
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(newItem)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    displayMessage(addMessage, 'Tesoro guardado exitosamente!', 'success');
+                    addTesorosForm.reset(); // Limpiar el formulario
+                    // Recargar la lista de tesoros para ver el nuevo
+                    currentPage = 1; // Volver a la primera página si añadimos uno nuevo
+                    await loadItems();
+                } else {
+                    displayMessage(addMessage, `Error: ${data.message || 'No se pudo guardar el tesoro'}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error al guardar tesoro:', error);
+                displayMessage(addMessage, `Error de conexión: ${error.message}`, 'error');
+            }
+        });
+
+        // --- Funcionalidad de Búsqueda ---
+        searchTesorosForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            currentSearchQuery = document.getElementById('searchQuery').value;
+            currentSearchTag = document.getElementById('searchTag').value;
+            currentPage = 1; // Reiniciar a la primera página para la búsqueda
+            isSearching = true;
+            await loadItems();
+        });
+
+        // --- Funcionalidad de Ver Todos los Tesoros ---
+        async function loadAllItems() {
+            currentSearchQuery = '';
+            currentSearchTag = '';
+            currentPage = 1;
+            isSearching = false; // Desactivar modo búsqueda
+            document.getElementById('searchQuery').value = ''; // Limpiar campos de búsqueda
+            document.getElementById('searchTag').value = '';
+            await loadItems();
+        }
+
+        // --- Funcionalidad de Paginación ---
+        prevPageBtn.addEventListener('click', async () => {
+            if (currentPage > 1) {
+                currentPage--;
+                await loadItems();
+            }
+        });
+
+        nextPageBtn.addEventListener('click', async () => {
+            // No necesitamos saber el total de páginas aquí, loadItems lo recalcula
+            currentPage++;
+            await loadItems();
+        });
+
+        // --- Funcionalidad de Editar Tesoro (Modal) ---
+        function openEditModal(item) {
+            editItemId.value = item._id;
+            editItemName.value = item.name;
+            editItemDescription.value = item.description || '';
+            editItemTags.value = item.tags ? item.tags.join(', ') : '';
+
+            editModal.style.display = 'block';
+            modalOverlay.style.display = 'block';
+            editMessage.style.display = 'none'; // Limpiar mensajes previos
+        }
+
+        function closeEditModal() {
+            editModal.style.display = 'none';
+            modalOverlay.style.display = 'none';
+        }
+
+        editTesorosForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = editItemId.value;
+            const updatedItem = {
+                name: editItemName.value,
+                description: editItemDescription.value,
+                tags: editItemTags.value ? editItemTags.value.split(',').map(tag => tag.trim()).filter(tag => tag !== '') : []
+            };
+
+            try {
+                const response = await fetch(`${API_URL}/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updatedItem)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    displayMessage(editMessage, 'Tesoro actualizado exitosamente!', 'success');
+                    closeEditModal();
+                    await loadItems(); // Recargar la lista para ver los cambios
+                } else {
+                    displayMessage(editMessage, `Error: ${data.message || 'No se pudo actualizar el tesoro'}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error al actualizar tesoro:', error);
+                displayMessage(editMessage, `Error de conexión: ${error.message}`, 'error');
+            }
+        });
+
+
+        // --- Funcionalidad de Eliminar Tesoro ---
+        async function deleteItem(id) {
+            if (!confirm('¿Estás seguro de que quieres eliminar este tesoro?')) {
+                return; // Si el usuario cancela, no hacemos nada
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/${id}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json(); // Leer la respuesta incluso si es un error
+
+                if (response.ok) {
+                    displayMessage(listMessage, 'Tesoro eliminado exitosamente!', 'success');
+                    // Después de eliminar, recargamos los ítems en la página actual
+                    // O si estábamos en la última página y se elimina el último ítem,
+                    // quizás retroceder a la página anterior
+                    await loadItems();
+                } else {
+                    displayMessage(listMessage, `Error: ${data.message || 'No se pudo eliminar el tesoro'}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error al eliminar tesoro:', error);
+                displayMessage(listMessage, `Error de conexión: ${error.message}`, 'error');
+            }
+        }
+
+        // Cargar los tesoros al inicio cuando la página se carga
+        document.addEventListener('DOMContentLoaded', () => {
+            loadItems();
+        });
+
+    </script>
+</body>
+</html>
