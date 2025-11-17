@@ -1,0 +1,16 @@
+# Dependencias de Node
+/node_modules
+/package-lock.json
+/yarn.lock
+/npm-debug.log
+
+# Archivos de Entorno y Configuración
+.env
+.DS_Store
+
+# Logs
+*.log
+
+# Build/Dist (si se llegara a transpilar)
+/dist
+/build
